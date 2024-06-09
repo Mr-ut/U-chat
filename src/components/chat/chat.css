@@ -1,3 +1,4 @@
+
 .chat {
   flex: 2;
   border-left: 1px solid #dddddd35;
@@ -176,6 +177,15 @@
   align-items: center; /* Optional: to center videos vertically */
   justify-content: center; /* Optional: to center videos horizontally */
   gap: 10px; /* Optional: to add space between videos */
+
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(17, 25, 40, 0.75);
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(14, 36, 142, 0.2);
+  z-index: 1000;
 }
 
 .modal {

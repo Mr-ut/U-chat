@@ -127,24 +127,42 @@ const Chat = () => {
 
   const acceptCall = () => {
     console.log('Call Accepted');
-    const getUserMedia = navigator.mediaDevices.getUserMedia;
-
-    getUserMedia({ video: true, audio: true })
+  
+    // Ensure navigator.mediaDevices.getUserMedia is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Your browser does not support media devices.');
+      return;
+    }
+  
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then((mediaStream) => {
+        // Set the local video stream
         currentUserVideoRef.current.srcObject = mediaStream;
         currentUserVideoRef.current.play();
+  
+        // Answer the incoming call with the local media stream
         incomingCall.answer(mediaStream);
+  
+        // Handle the remote stream
         incomingCall.on('stream', (remoteStream) => {
           remoteVideoRef.current.srcObject = remoteStream;
           remoteVideoRef.current.play();
         });
+  
+        // Update the state to reflect that the call is accepted
         setIsReceivingCall(false);
       })
       .catch((err) => {
+        // Clean up any media tracks if there's an error
+        if (currentUserVideoRef.current && currentUserVideoRef.current.srcObject) {
+          currentUserVideoRef.current.srcObject.getTracks().forEach(track => track.stop());
+        }
+  
         console.error('Failed to get local stream', err);
         alert('Failed to access media devices. Please ensure your camera and microphone are connected and allowed.');
       });
   };
+  
 
   const declineCall = () => {
     console.log('Declining call');
