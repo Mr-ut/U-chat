@@ -15,30 +15,39 @@ const ChatList = () => {
   const { chatId, changeChat } = useChatStore();
 
   useEffect(() => {
-    const unSub = onSnapshot(
-      doc(db, "userchats", currentUser.id),
-      async (res) => {
-        const items = res.data().chats;
+    if (!currentUser?.id) return;
 
-        const promises = items.map(async (item) => {
-          const userDocRef = doc(db, "users", item.receiverId);
-          const userDocSnap = await getDoc(userDocRef);
-
-          const user = userDocSnap.data();
-
-          return { ...item, user };
-        });
-
-        const chatData = await Promise.all(promises);
-
-        setChats(chatData.sort((a, b) => b.updatedAt - a.updatedAt));
+    const unSub = onSnapshot(doc(db, "userchats", currentUser.id), async (res) => {
+      const data = res.data();
+      if (!data || !Array.isArray(data.chats)) {
+        setChats([]);
+        return;
       }
-    );
+
+      const items = data.chats;
+
+      const promises = items.map(async (item) => {
+        if (!item.receiverId) return null;
+
+        const userDocRef = doc(db, "users", item.receiverId);
+        const userDocSnap = await getDoc(userDocRef);
+
+        const user = userDocSnap.data();
+        if (!user) return null;
+
+        return { ...item, user };
+      });
+
+      const chatData = await Promise.all(promises);
+      const filteredChatData = chatData.filter(item => item !== null);
+
+      setChats(filteredChatData.sort((a, b) => b.updatedAt - a.updatedAt));
+    });
 
     return () => {
       unSub();
     };
-  }, [currentUser.id]);
+  }, [currentUser?.id]);
 
   const handleSelect = async (chat) => {
     const userChats = chats.map((item) => {
@@ -46,9 +55,9 @@ const ChatList = () => {
       return rest;
     });
 
-    const chatIndex = userChats.findIndex(
-      (item) => item.chatId === chat.chatId
-    );
+    const chatIndex = userChats.findIndex((item) => item.chatId === chat.chatId);
+
+    if (chatIndex === -1) return;
 
     userChats[chatIndex].isSeen = true;
 
