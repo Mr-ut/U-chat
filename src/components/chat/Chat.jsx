@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./chat.css";
+import Peer from 'peerjs';
 import EmojiPicker from "emoji-picker-react";
 import {
   arrayUnion,
@@ -12,7 +13,13 @@ import { db } from "../../lib/firebase";
 import { useChatStore } from "../../lib/chatStore";
 import { useUserStore } from "../../lib/userStore";
 import upload from "../../lib/upload";
-import { format } from "timeago.js";
+import TimeAgo from 'javascript-time-ago'
+
+// English.
+import en from 'javascript-time-ago/locale/en'
+
+TimeAgo.addDefaultLocale(en)
+const timeAgo = new TimeAgo('en-US')
 
 const Chat = () => {
   const [chat, setChat] = useState(null);  // Initialize as null to handle loading state
@@ -28,6 +35,74 @@ const Chat = () => {
 
   const endRef = useRef(null);
 
+  // video calling
+  const [peerId, setPeerId] = useState('');
+  const [remotePeerIdValue, setRemotePeerIdValue] = useState('');
+  const [showVideo, setShowVideo] = useState(false);
+  const remoteVideoRef = useRef(null);
+  const currentUserVideoRef = useRef(null);
+  const peerInstance = useRef(null);
+
+  useEffect(() => {
+    const peer = new Peer(currentUser.id);
+
+    peer.on('open', (id) => {
+      setPeerId(id);
+      console.log('Peer ID:', id); // Log the peer ID
+    });
+
+    peer.on('call', (call) => {
+      console.log('Incoming call');
+      const getUserMedia = navigator.mediaDevices.getUserMedia;
+
+      getUserMedia({ video: true, audio: true })
+        .then((mediaStream) => {
+          currentUserVideoRef.current.srcObject = mediaStream;
+          currentUserVideoRef.current.play();
+          call.answer(mediaStream);
+          call.on('stream', (remoteStream) => {
+            remoteVideoRef.current.srcObject = remoteStream;
+            remoteVideoRef.current.play();
+          });
+        })
+        .catch((err) => {
+          console.error('Failed to get local stream', err);
+          alert('Failed to access media devices. Please ensure your camera and microphone are connected and allowed.');
+        });
+    });
+
+    peerInstance.current = peer;
+
+    // Clean up the peer instance on component unmount
+    return () => {
+      peer.destroy();
+    };
+  }, [currentUser.id]);
+
+  const call = (remotePeerId) => {
+    setShowVideo(true);
+    console.log('Initiating call to:', remotePeerId);
+    const getUserMedia = navigator.mediaDevices.getUserMedia;
+
+    getUserMedia({ video: true, audio: true })
+      .then((mediaStream) => {
+        currentUserVideoRef.current.srcObject = mediaStream;
+        currentUserVideoRef.current.play();
+        const call = peerInstance.current.call(remotePeerId, mediaStream);
+
+        call.on('stream', (remoteStream) => {
+          remoteVideoRef.current.srcObject = remoteStream;
+          remoteVideoRef.current.play();
+        });
+      })
+      .catch((err) => {
+        console.error('Failed to get local stream', err);
+        alert('Failed to access media devices. Please ensure your camera and microphone are connected and allowed.');
+      });
+  };
+
+
+  //video calling ends.
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chat?.messages]);
@@ -125,12 +200,12 @@ const Chat = () => {
           <img src={user?.avatar || "./avatar.png"} alt="" />
           <div className="texts">
             <span>{user?.username}</span>
-            <p>Lorem ipsum dolor sit amet.</p>
+            <p>Peer ID: {peerId}</p>
           </div>
         </div>
         <div className="icons">
           <img src="./phone.png" alt="" />
-          <img src="./video.png" alt="" />
+          <img onClick={() => call(user.id)} src="./video.png" alt="" />
           <img src="./info.png" alt="" />
         </div>
       </div>
@@ -140,12 +215,12 @@ const Chat = () => {
             className={
               message.senderId === currentUser?.id ? "message own" : "message"
             }
-            key={message.createdAt?.toMillis()}  // Ensure unique key
+            key={message.createdAt?.toMillis()}
           >
             <div className="texts">
               {message.img && <img src={message.img} alt="" />}
               <p>{message.text}</p>
-              <span>{format(message.createdAt.toDate())}</span>
+              <span>{timeAgo.format(message.createdAt.toDate())}</span>
             </div>
           </div>
         ))}
@@ -201,6 +276,12 @@ const Chat = () => {
           Send
         </button>
       </div>
+      {showVideo && (
+        <>
+          <video ref={currentUserVideoRef} autoPlay muted />
+          <video ref={remoteVideoRef} autoPlay />
+        </>
+      )}
     </div>
   );
 };
