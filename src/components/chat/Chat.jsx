@@ -59,22 +59,22 @@ const Chat = () => {
       console.log('Incoming call');
       setIncomingCall(call);
       setIsReceivingCall(true);
-      const getUserMedia = navigator.mediaDevices.getUserMedia;
+      // const getUserMedia = navigator.mediaDevices.getUserMedia;
 
-      getUserMedia({ video: true, audio: true })
-        .then((mediaStream) => {
-          currentUserVideoRef.current.srcObject = mediaStream;
-          currentUserVideoRef.current.play();
-          call.answer(mediaStream);
-          call.on('stream', (remoteStream) => {
-            remoteVideoRef.current.srcObject = remoteStream;
-            remoteVideoRef.current.play();
-          });
-        })
-        .catch((err) => {
-          console.error('Failed to get local stream', err);
-          alert('Failed to access media devices. Please ensure your camera and microphone are connected and allowed.');
-        });
+      // getUserMedia({ video: true, audio: true })
+      //   .then((mediaStream) => {
+      //     currentUserVideoRef.current.srcObject = mediaStream;
+      //     currentUserVideoRef.current.play();
+      //     call.answer(mediaStream);
+      //     call.on('stream', (remoteStream) => {
+      //       remoteVideoRef.current.srcObject = remoteStream;
+      //       remoteVideoRef.current.play();
+      //     });
+      //   })
+      //   .catch((err) => {
+      //     console.error('Failed to get local stream', err);
+      //     alert('Failed to access media devices. Please ensure your camera and microphone are connected and allowed.');
+      //   });
     });
 
     peerInstance.current = peer;
@@ -366,13 +366,13 @@ const Chat = () => {
         </>
 
       )}
-{/*       {isReceivingCall && (
+      {isReceivingCall && (
         <IncomingCallModal
           caller={user.username}
           onAccept={acceptCall}
           onDecline={declineCall}
         />
-      )} */}
+      )}
     </div>
   );
 };
