@@ -366,13 +366,13 @@ const Chat = () => {
         </>
 
       )}
-      {isReceivingCall && (
+{/*       {isReceivingCall && (
         <IncomingCallModal
           caller={user.username}
           onAccept={acceptCall}
           onDecline={declineCall}
         />
-      )}
+      )} */}
     </div>
   );
 };
