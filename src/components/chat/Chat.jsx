@@ -39,9 +39,13 @@ const Chat = () => {
   const [peerId, setPeerId] = useState('');
   const [remotePeerIdValue, setRemotePeerIdValue] = useState('');
   const [showVideo, setShowVideo] = useState(false);
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [isReceivingCall, setIsReceivingCall] = useState(false);
   const remoteVideoRef = useRef(null);
   const currentUserVideoRef = useRef(null);
   const peerInstance = useRef(null);
+  const currentCall = useRef(null);
+  const endcRef = useRef();
 
   useEffect(() => {
     const peer = new Peer(currentUser.id);
@@ -53,22 +57,24 @@ const Chat = () => {
 
     peer.on('call', (call) => {
       console.log('Incoming call');
-      const getUserMedia = navigator.mediaDevices.getUserMedia;
+      setIncomingCall(call);
+      setIsReceivingCall(true);
+      // const getUserMedia = navigator.mediaDevices.getUserMedia;
 
-      getUserMedia({ video: true, audio: true })
-        .then((mediaStream) => {
-          currentUserVideoRef.current.srcObject = mediaStream;
-          currentUserVideoRef.current.play();
-          call.answer(mediaStream);
-          call.on('stream', (remoteStream) => {
-            remoteVideoRef.current.srcObject = remoteStream;
-            remoteVideoRef.current.play();
-          });
-        })
-        .catch((err) => {
-          console.error('Failed to get local stream', err);
-          alert('Failed to access media devices. Please ensure your camera and microphone are connected and allowed.');
-        });
+      // getUserMedia({ video: true, audio: true })
+      //   .then((mediaStream) => {
+      //     currentUserVideoRef.current.srcObject = mediaStream;
+      //     currentUserVideoRef.current.play();
+      //     call.answer(mediaStream);
+      //     call.on('stream', (remoteStream) => {
+      //       remoteVideoRef.current.srcObject = remoteStream;
+      //       remoteVideoRef.current.play();
+      //     });
+      //   })
+      //   .catch((err) => {
+      //     console.error('Failed to get local stream', err);
+      //     alert('Failed to access media devices. Please ensure your camera and microphone are connected and allowed.');
+      //   });
     });
 
     peerInstance.current = peer;
@@ -100,6 +106,62 @@ const Chat = () => {
         alert('Failed to access media devices. Please ensure your camera and microphone are connected and allowed.');
       });
   };
+
+  const endCall = () => {
+    setShowVideo(false);
+
+    if (currentCall.current) {
+      currentCall.current.close();
+    }
+
+    if (currentUserVideoRef.current && currentUserVideoRef.current.srcObject) {
+      let tracks = currentUserVideoRef.current.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+    }
+
+    if (remoteVideoRef.current && remoteVideoRef.current.srcObject) {
+      let tracks = remoteVideoRef.current.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+    }
+  };
+
+  const acceptCall = () => {
+    console.log('Call Accepted');
+    const getUserMedia = navigator.mediaDevices.getUserMedia;
+
+    getUserMedia({ video: true, audio: true })
+      .then((mediaStream) => {
+        currentUserVideoRef.current.srcObject = mediaStream;
+        currentUserVideoRef.current.play();
+        incomingCall.answer(mediaStream);
+        incomingCall.on('stream', (remoteStream) => {
+          remoteVideoRef.current.srcObject = remoteStream;
+          remoteVideoRef.current.play();
+        });
+        setIsReceivingCall(false);
+      })
+      .catch((err) => {
+        console.error('Failed to get local stream', err);
+        alert('Failed to access media devices. Please ensure your camera and microphone are connected and allowed.');
+      });
+  };
+
+  const declineCall = () => {
+    console.log('Declining call');
+    setIncomingCall(null);
+    setIsReceivingCall(false);
+
+    if (currentUserVideoRef.current && currentUserVideoRef.current.srcObject) {
+      let tracks = currentUserVideoRef.current.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+    }
+
+    if (remoteVideoRef.current && remoteVideoRef.current.srcObject) {
+      let tracks = remoteVideoRef.current.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+    }
+  };
+
 
 
   //video calling ends.
@@ -200,7 +262,7 @@ const Chat = () => {
           <img src={user?.avatar || "./avatar.png"} alt="" />
           <div className="texts">
             <span>{user?.username}</span>
-            <p>Peer ID: {peerId}</p>
+            <p>Peer ID: {user.id}</p>
           </div>
         </div>
         <div className="icons">
@@ -278,10 +340,39 @@ const Chat = () => {
       </div>
       {showVideo && (
         <>
-          <video ref={currentUserVideoRef} autoPlay muted />
-          <video ref={remoteVideoRef} autoPlay />
+          <div className="video-container">
+            <video ref={currentUserVideoRef} height={200} autoPlay muted />
+            <video ref={remoteVideoRef} height={200} autoPlay />
+          </div>
+          <button onClick={endCall} style={{ backgroundColor: 'red', color: 'white' }}>End Call</button>
         </>
+
       )}
+      {isReceivingCall && (
+        <IncomingCallModal
+          caller={user.username}
+          onAccept={acceptCall}
+          onDecline={declineCall}
+        />
+      )}
+    </div>
+  );
+};
+
+const IncomingCallModal = ({ caller, onAccept, onDecline }) => {
+  const { currentUser } = useUserStore();
+  const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } = useChatStore();
+
+  return (
+    <div className="modal">
+      <div className="modal-content">
+        <img src={user?.avatar || "./avatar.png"} alt="" />
+        <h3>{caller} is calling ...</h3>
+        <div className="btn">
+          <button onClick={onAccept} style={{ backgroundColor: '#32CD32' }}>Accept</button>
+          <button onClick={onDecline} style={{ backgroundColor: 'red' }}>Decline</button>
+        </div>
+      </div>
     </div>
   );
 };
